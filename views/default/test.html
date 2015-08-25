@@ -1,0 +1,19 @@
+{{left_sidebar_enabled,right_sidebar_enabled=False,('message' in globals())}}
+{{extend 'layout.html'}}
+
+{{block head}}
+<!-- This hides the "content" label of the form. -->
+<style>
+label#no_table_body__label { display: none; }
+</style>
+{{end}}
+
+<h1>{{=display_title}}</h1>
+
+{{if editing:}}
+{{=content}}
+{{else:}}
+{{=represent_wiki(content)}}
+<p>{{=A('Edit', _class='btn', _href=URL('default', 'test', vars=dict(edit='true')))}}</p>
+{{pass}}
+
