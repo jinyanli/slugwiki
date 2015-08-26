@@ -201,6 +201,7 @@
 'Stylesheet': '网页样式表',
 'submit': '提交',
 'Submit': '提交',
+'Success!': 'Success!',
 'Support': 'Support',
 'Sure you want to delete this object?': '确定要删除此对象？',
 'Table': '数据表',

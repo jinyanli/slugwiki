@@ -2,8 +2,11 @@
 {{extend 'layout.html'}}
 
 <h1>{{=display_title}}</h1>
-
+{{if editing:}}
 {{=content}}
-
+{{else:}}
+{{=represent_wiki(content)}}
+<p>{{=A('Edit', _class='btn', _href=URL('default', 'index',args=[title], vars=dict(edit='y')))}}</p>
+{{pass}}
 <!-- You need to put here buttons to see the revision history (to implement later),
 and to edit (to implement now). -->

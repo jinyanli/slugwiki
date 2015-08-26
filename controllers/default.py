@@ -6,25 +6,68 @@ import logging
 
 def index():
     """
-    This is the main page of the wiki.  
+    This is the main page of the wiki.
     You will find the title of the requested page in request.args(0).
-    If this is None, then just serve the latest revision of something titled "Main page" or something 
-    like that. 
+    If this is None, then just serve the latest revision of something titled "Main page" or something
+    like that.
     """
-    title = request.args(0) or 'main page'
-    # You have to serve to the user the most recent revision of the 
-    # page with title equal to title.
-    
-    # Let's uppernice the title.  The last 'title()' below
-    # is actually a Python function, if you are wondering.
+    title = request.args(0) or 'main_page'
+    title = title.lower()
     display_title = title.title()
+    #if title!='main page' or len(request.args) != 0 :
+    if db(db.pagetable.title==title).select().first() is None:
+            redirect(URL('default', 'create',args=[title]))
 
-    
-    # Here, I am faking it.  
-    # Produce the content from real database data. 
-    content = represent_wiki("I like <<Panda>>s")
-    return dict(display_title=display_title, content=content)
+    page_id = db(db.pagetable.title == title).select().first().id
 
+    rev = db(db.revision.pagetable_id == page_id).select(orderby=~db.revision.created_on).first()
+
+
+    s = rev.body if rev is not None else ''
+
+    editing = request.vars.edit == 'y'
+    if editing:
+        # We are editing.  Gets the body s of the page.
+        # Creates a form to edit the content s, with s as default.
+        form = SQLFORM.factory(Field('body', 'text',
+                                     label='Content',
+                                     default=s
+                                     ))
+        # You can easily add extra buttons to forms.
+        form.add_button('Cancel', URL('default', 'index'))
+        # Processes the form.
+        if form.process().accepted:
+            # Writes the new content.
+            """if rev is None:
+                # First time: we need to insert it.
+                #db.revision.insert(body=form.vars.body)
+                db.revision.insert(body=form.vars.body)
+            else:
+                # We update it.
+                rev.update_record(body=form.vars.body)"""
+            db.revision.insert(pagetable_id=page_id,body=form.vars.body)
+
+            redirect(URL('default', 'index'))
+        content = form
+    else:
+        # We are just displaying the page
+        content = s
+
+    return dict(display_title=display_title,title=title, content=content,editing=editing)
+
+def create():
+    title = request.args(0)
+    form = SQLFORM.factory(Field('body', 'text',
+                                 label='Content'
+                                 ))
+    form.add_button('Cancel', URL('default', 'index'))
+    if form.process().accepted:
+        db.pagetable.insert(title=title)
+        page_id = db(db.pagetable.title == title).select().first().id
+        db.revision.insert(body=form.vars.body,pagetable_id=page_id )
+        redirect(URL('default', 'index',args=[title]))
+    content = form
+    return dict(display_title=title.title(),content=content)
 
 def test():
     """This controller is here for testing purposes only.
@@ -33,11 +76,11 @@ def test():
     title = "This is the wiki's test page"
     form = None
     content = None
-    
+
     # Let's uppernice the title.  The last 'title()' below
     # is actually a Python function, if you are wondering.
     display_title = title.title()
-    
+
     # Gets the body s of the page.
     r = db.testpage(1)
     s = r.body if r is not None else ''
@@ -111,7 +154,7 @@ def call():
     return service()
 
 
-@auth.requires_login() 
+@auth.requires_login()
 def api():
     """
     this is example of API with access control

@@ -6,25 +6,30 @@ import unittest
 # Format for wiki links.
 RE_LINKS = re.compile('(<<)(.*?)(>>)')
 
-db.define_table('pagetable' # Name 'page' is reserved unfortunately.
+db.define_table('pagetable', # Name 'page' is reserved unfortunately.
     # Complete!
+    Field('title')
     )
 
 
 db.define_table('revision',
-    # Complete!
-    Field('body', 'text'), # This is the main content of a revision.
+    # Complete!'post',
+    Field('pagetable_id', "reference pagetable"),
+    Field('body', 'text'),
+    Field('created_on', 'datetime', default=request.now),
+    Field('created_by', 'reference auth_user', default=auth.user_id)
+    # This is the main content of a revision.
     )
 
 db.define_table('testpage',
     # This table is used for testing only.  Don't use it in your code,
-    # but feel free to look at how I use it. 
+    # but feel free to look at how I use it.
     Field('body', 'text'),
     )
 
 def create_wiki_links(s):
-    """This function replaces occurrences of '<<polar bear>>' in the 
-    wikitext s with links to default/page/polar%20bear, so the name of the 
+    """This function replaces occurrences of '<<polar bear>>' in the
+    wikitext s with links to default/page/polar%20bear, so the name of the
     page will be urlencoded and passed as argument 1."""
     def makelink(match):
         # The tile is what the user puts in
@@ -41,7 +46,7 @@ def represent_wiki(s):
     return MARKMIN(create_wiki_links(s))
 
 def represent_content(v, r):
-    """In case you need it: this is similar to represent_wiki, 
+    """In case you need it: this is similar to represent_wiki,
     but can be used in db.table.field.represent = represent_content"""
     return represent_wiki(v)
 
