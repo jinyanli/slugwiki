@@ -11,9 +11,13 @@ def index():
     If this is None, then just serve the latest revision of something titled "Main page" or something
     like that.
     """
-    title = request.args(0) or 'main_page'
-    title = title.lower()
+    title = request.args(0) or 'main page'
     display_title = title.title()
+    title=title.replace (" ", "_")
+    logger.info("This is a request for page %r" %
+         (title))
+    logger.info("type of request.client %r" %
+            (type(request.client)))
     #if title!='main page' or len(request.args) != 0 :
     if db(db.pagetable.title==title).select().first() is None:
             redirect(URL('default', 'create',args=[title]))
@@ -26,15 +30,26 @@ def index():
     s = rev.body if rev is not None else ''
 
     editing = request.vars.edit == 'y'
+
     if editing:
         # We are editing.  Gets the body s of the page.
         # Creates a form to edit the content s, with s as default.
-        form = SQLFORM.factory(Field('body', 'text',
+        auth.basic()
+        """if auth.user==None:
+            session.currenttitle=title
+            redirect(URL('default', 'user'))"""
+
+
+        form = SQLFORM.factory(Field('comment','text',label='revision comment'),
+                                  Field('body', 'text',
                                      label='Content',
                                      default=s
                                      ))
         # You can easily add extra buttons to forms.
-        form.add_button('Cancel', URL('default', 'index'))
+        form.add_button('Cancel', URL('default', 'index',args=[title]))
+        form.add_button('History', URL('default', 'history',args=[title]))
+
+
         # Processes the form.
         if form.process().accepted:
             # Writes the new content.
@@ -45,16 +60,28 @@ def index():
             else:
                 # We update it.
                 rev.update_record(body=form.vars.body)"""
-            db.revision.insert(pagetable_id=page_id,body=form.vars.body)
+            auth.basic()
+            if auth.user==None:
+                db.revision.insert(pagetable_id=page_id,body=form.vars.body,
+                                  created_by=auth.user_id,user_ip=request.client,
+                                  logged=False,revision_comment=form.vars.comment)
+            else:
+                db.revision.insert(pagetable_id=page_id,body=form.vars.body,
+                                  created_by=auth.user_id,user_ip=request.client,
+                                  logged=True,revision_comment=form.vars.comment)
 
-            redirect(URL('default', 'index'))
+
+
+            redirect(URL('default', 'index',args=[title]))
         content = form
     else:
         # We are just displaying the page
         content = s
 
-    return dict(display_title=display_title,title=title, content=content,editing=editing)
+    return dict(display_title=display_title,title=title,
+                 content=content,editing=editing)
 
+@auth.requires_login()
 def create():
     title = request.args(0)
     form = SQLFORM.factory(Field('body', 'text',
@@ -64,10 +91,45 @@ def create():
     if form.process().accepted:
         db.pagetable.insert(title=title)
         page_id = db(db.pagetable.title == title).select().first().id
-        db.revision.insert(body=form.vars.body,pagetable_id=page_id )
+        db.revision.insert(body=form.vars.body,pagetable_id=page_id,
+        revision_comment='initialization')
         redirect(URL('default', 'index',args=[title]))
     content = form
     return dict(display_title=title.title(),content=content)
+
+def history():
+    title=request.args(0)
+    logger.info("This is a request for page %r" %
+         (title))
+    auth.basic()
+    if request.vars.rev=='y':
+        post=db(db.revision.id==request.vars.post_id).select().first()
+        logger.info("request.vars.rev= %r" %
+             (request.vars.rev))
+        logger.info("type of post in history()  %r" %
+             (type(post)))
+        logger.info("request.vars.post_id  %r" %
+             (request.vars.post_id))
+        logger.info("post.created_on  %r" %
+             (post.created_on))
+        logger.info("type of post.created_on  %r" %
+                (type(post.created_on)))
+        revision_comment='Revert to '+str(post.created_on)
+        if auth.user==None:
+             logged=False
+        else:
+             logged=True
+        db.revision.insert(pagetable_id=post.pagetable_id,body=post.body,
+                          created_by=auth.user_id,user_ip=request.client,
+                          logged=logged,revision_comment=revision_comment)
+        redirect(URL('default', 'index',args=[title]))
+
+    page_id = db(db.pagetable.title == title).select().first().id
+    posts = db(db.revision.pagetable_id == page_id).select(orderby=~db.revision.created_on)
+
+    """logger.info("posts type %r" %
+         (type(posts)))"""
+    return  dict(posts=posts,title=title)
 
 def test():
     """This controller is here for testing purposes only.
@@ -132,6 +194,8 @@ def user():
         @auth.requires_permission('read','table name',record_id)
     to decorate functions that need access control
     """
+    session.flash=T('Not authorized Please log in')
+    auth.settings.login_next = URL('default', 'index',args=[session.currenttitle])
     return dict(form=auth())
 
 

@@ -1,0 +1,39 @@
+{{left_sidebar_enabled,right_sidebar_enabled=False,('message' in globals())}}
+{{extend 'layout.html'}}
+<h1>Page Title:{{=title}}</h1>
+<h2>revisions:</h2>
+
+{{if len(posts) > 0:}}
+
+<ul>
+{{for p in posts:}}
+{{
+if p.logged==False:
+userinfo=p.user_ip
+else:
+userinfo=p.created_by
+if p.created_by is not None:
+r=db(db.auth_user.id == p.created_by).select().first()
+"""logger.info("type of r %r value: %r" %
+       (type(r),r.first_name))"""
+userinfo=r.first_name
+pass
+pass
+}}
+<li><b>Created on</b> {{=p.created_on}}.<b>By user:</b>{{=userinfo}}. <b>Comment:</b>{{=p.revision_comment}}
+({{=A('revert to this revision', _href=URL('default', 'history',args=[title], vars=dict(post_id=p.id,rev='y')))}})
+({{#=A('see revision', _href=URL('default', 'edit', args=[p.id]))}})
+
+</li>
+{{pass}}
+</ul>
+
+{{else:}}
+There are no posts.
+{{pass}}
+
+
+<p>{{=A('Edit', _class='btn', _href=URL('default', 'index',args=[title], vars=dict(edit='y')))}}</p>
+{{pass}}
+<!-- You need to put here buttons to see the revision history (to implement later),
+and to edit (to implement now). -->

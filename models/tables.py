@@ -1,5 +1,6 @@
 # coding: utf8
 from datetime import datetime
+from gluon import *
 import re
 import unittest
 
@@ -17,7 +18,10 @@ db.define_table('revision',
     Field('pagetable_id', "reference pagetable"),
     Field('body', 'text'),
     Field('created_on', 'datetime', default=request.now),
-    Field('created_by', 'reference auth_user', default=auth.user_id)
+    Field('created_by', 'reference auth_user', default=auth.user_id),
+    Field('user_ip','string'),
+    Field('logged','boolean'),
+    Field('revision_comment', 'text'),
     # This is the main content of a revision.
     )
 
